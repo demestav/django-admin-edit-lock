@@ -25,6 +25,29 @@ ADMIN_EDIT_LOCK_DURATION = 10 * 60
 
 will keep the lock for ten minutes.
 
+## Usage
+Use the `AdminEditLockMixin` to enable edit lock on a model. 
+
+For example:
+
+```python
+# models.py
+from django.db import models
+
+class Book(models.Model):
+    name = models.CharField(max_length=100)
+```
+
+```python
+from django.contrib import admin
+from admin_edit_lock.admin import AdminEditLockMixin
+
+
+class BookAdmin(AdminEditLockMixin, admin.ModelAdmin):
+    class Meta:
+        model = Book
+```
+
 ## Roadmap
 - Customize messages
 - Extending the lock expiry time through AJAX call
