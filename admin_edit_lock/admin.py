@@ -1,7 +1,7 @@
-from django.core.cache import cache
 from django.conf import settings
-from django.utils.translation import ugettext_lazy as _
 from django.contrib import messages
+from django.core.cache import cache
+from django.utils.translation import ugettext_lazy as _
 
 
 class AdminEditLockMixin:
@@ -36,14 +36,16 @@ class AdminEditLockMixin:
                 self.notify_user(
                     request,
                     _(
-                        "This is currently edited by you. Other users can edit once you finish editing."
+                        "This is currently edited by you."
+                        " Other users can edit once you finish editing."
                     ),
                 )
             elif lock_permission is False:
                 self.notify_user(
                     request,
                     _(
-                        "This is currently being edited by someone else. Editing disabled."
+                        "This is currently being edited by someone else."
+                        " Editing disabled."
                     ),
                 )
 
