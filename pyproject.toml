@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-admin-edit-lock"
-version = "0.1.0"
+version = "0.2.0"
 description = "django-admin-edit-lock is a Django application used in admin to prevent simultaneous edit by more than one users."
 authors = ["Demetris Stavrou"]
 packages = [
