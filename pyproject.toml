@@ -22,6 +22,7 @@ isort = "^5.8.0"
 pytest-django = "^4.4.0"
 pytest-pythonpath = "^0.7.3"
 freezegun = "^1.1.0"
+pre-commit = "^2.13.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
