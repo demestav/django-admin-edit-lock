@@ -1,3 +1,5 @@
+import datetime
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import unquote
@@ -8,6 +10,7 @@ from django.http.response import (
     HttpResponseForbidden,
 )
 from django.urls import path
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -22,20 +25,36 @@ class AdminEditLockMixin:
         session_key = request.session.session_key
 
         if obj and default_permission:
+            MAX_DURATION = settings.ADMIN_EDIT_LOCK_MAX_DURATION
+            dt_now = timezone.now()
+            dt_max = dt_now + datetime.timedelta(seconds=MAX_DURATION)
             cache_key = "admin-edit-lock-%s-%s-%s" % (
                 obj._meta.app_label,
                 obj.__class__.__name__,
                 obj.id,
             )
 
-            cache_session_key = cache.get(cache_key)
-            if cache_session_key:
-                if cache_session_key != session_key:
-                    lock_permission = False
-                else:
+            cache_lock_data = cache.get(cache_key)
+            if cache_lock_data:
+                lock_session_key = cache_lock_data["session_key"]
+                lock_dt = cache_lock_data["lock_dt"]
+                if (
+                    lock_session_key == session_key
+                    and (dt_now - lock_dt).seconds < MAX_DURATION
+                ):
                     lock_permission = True
+                else:
+                    lock_permission = False
             else:
-                cache.set(cache_key, session_key, settings.ADMIN_EDIT_LOCK_DURATION)
+                # Calculate the next lock duration
+                next_lock_duration = min(
+                    settings.ADMIN_EDIT_LOCK_DURATION, (dt_max - dt_now).seconds
+                )
+                cache.set(
+                    cache_key,
+                    {"session_key": session_key, "lock_dt": dt_now},
+                    next_lock_duration,
+                )
                 lock_permission = True
 
             if lock_permission is True:
@@ -64,19 +83,32 @@ class AdminEditLockMixin:
         session_key = request.session.session_key
 
         if default_permission:
+            MAX_DURATION = settings.ADMIN_EDIT_LOCK_MAX_DURATION
+            dt_now = timezone.now()
+            dt_max = dt_now + datetime.timedelta(seconds=MAX_DURATION)
             cache_key = "admin-edit-lock-%s-%s-%s" % (
                 obj._meta.app_label,
                 obj.__class__.__name__,
                 obj.id,
             )
 
-            cache_session_key = cache.get(cache_key)
-            if cache_session_key:
-                if cache_session_key != session_key:
-                    return HttpResponseForbidden()
-                else:
-                    cache.set(cache_key, session_key, settings.ADMIN_EDIT_LOCK_DURATION)
+            cache_lock_data = cache.get(cache_key)
+
+            if cache_lock_data:
+                lock_session_key = cache_lock_data["session_key"]
+                lock_dt = cache_lock_data["lock_dt"]
+                if (
+                    lock_session_key == session_key
+                    and (dt_now - lock_dt).seconds < MAX_DURATION
+                ):
+                    # Calculate the next lock duration
+                    next_lock_duration = min(
+                        settings.ADMIN_EDIT_LOCK_DURATION, (dt_max - dt_now).seconds
+                    )
+                    cache.set(cache_key, cache_lock_data, next_lock_duration)
                     return HttpResponse(status=204)
+                else:
+                    return HttpResponseForbidden()
             else:
                 return HttpResponseForbidden()
         else:
