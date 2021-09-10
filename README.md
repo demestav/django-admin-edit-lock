@@ -1,5 +1,7 @@
 # django-admin-edit-lock
 
+> :warning: Correct operation relies on cache. Therefore, the current version will be unreliable in cases where the default local-memory cache backend is used, along with multiple application server worker (see https://github.com/demestav/django-admin-edit-lock/issues/1).
+
 ## Setup
 Install package using `pip`:
 
