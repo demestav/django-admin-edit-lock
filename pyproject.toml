@@ -23,8 +23,17 @@ pytest-django = "^4.4.0"
 pytest-pythonpath = "^0.7.3"
 freezegun = "^1.1.0"
 pre-commit = "^2.13.0"
+coverage = "^5.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.coverage.run]
+source = ["admin_edit_lock"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
