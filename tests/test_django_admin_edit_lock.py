@@ -1,15 +1,16 @@
-from django.contrib.sessions.middleware import SessionMiddleware
+import datetime
+
+import pytest
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.contrib.messages.storage import default_storage
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.core.cache import cache
+from django.urls import reverse
 from freezegun import freeze_time
-import datetime
 
 from tests.models import Book, BookAdmin
-from django.contrib.messages.storage import default_storage
-
-import pytest
 
 
 def test_cahce():
@@ -104,7 +105,7 @@ def test_lock_expiry(rf):
         request.session.save()
         request._messages = default_storage(request)
         assert book_admin.has_change_permission(request, obj=book_obj) is False
-        # Second editor is declined edit permission
+        # Second editor is allow edit permission
         request = rf.get("")
         frozen_datetime.tick(datetime.timedelta(seconds=10 * 60))
         request.user = second_editor
@@ -113,3 +114,58 @@ def test_lock_expiry(rf):
         request._messages = default_storage(request)
         assert book_admin.has_change_permission(request, obj=book_obj) is True
         cache.clear()
+
+
+@pytest.mark.django_db
+def test_update_lock_no_change_permission(client):
+    """
+    Return request Forbidden if the user is not allowed to change by default.
+    """
+    book_obj = Book.objects.create(name="A Brief History of Time")
+    get_user_model().objects.create_user(
+        username="editor", password="123", is_staff=True
+    )
+    url = reverse("admin:tests_book_change", args=(book_obj.id,))
+    client.login(username="editor", password="123")
+    response = client.post(url + "update-lock/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_update_lock_no_previous_lock(client):
+    """
+    Return request Forbidden if the user did not obtain a lock previously.
+    """
+    book_obj = Book.objects.create(name="A Brief History of Time")
+    editor = get_user_model().objects.create_user(
+        username="editor", password="123", is_staff=True
+    )
+    p = Permission.objects.get(codename="change_book")
+    editor.user_permissions.add(p)
+    url = reverse("admin:tests_book_change", args=(book_obj.id,))
+    client.login(username="editor", password="123")
+    response = client.post(url + "update-lock/")
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_update_lock_does_not_own_lock(client):
+    """
+    Return request Forbidden if users try to update a lock they don't own.
+    """
+    Book.objects.create(name="A Brief History of Time")
+    editor = get_user_model().objects.create_user(
+        username="editor", password="123", is_staff=True
+    )
+    second_editor = get_user_model().objects.create_user(
+        username="second_editor", password="123", is_staff=True
+    )
+    p = Permission.objects.get(codename="change_book")
+    editor.user_permissions.add(p)
+    second_editor.user_permissions.add(p)
+    url = reverse("admin:tests_book_change", args=(1,))
+    client.login(username="editor", password="123")
+    client.get(url)
+    client.login(username="second_editor", password="123")
+    response = client.post(url + "update-lock/")
+    assert response.status_code == 403
