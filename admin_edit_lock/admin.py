@@ -102,6 +102,7 @@ class AdminEditLockMixin:
                     and (dt_now - lock_dt).seconds < MAX_DURATION
                 ):
                     # Calculate the next lock duration
+                    dt_max = lock_dt + datetime.timedelta(seconds=MAX_DURATION)
                     next_lock_duration = min(
                         settings.ADMIN_EDIT_LOCK_DURATION, (dt_max - dt_now).seconds
                     )
@@ -112,7 +113,7 @@ class AdminEditLockMixin:
             else:
                 return HttpResponseForbidden()
         else:
-            return HttpResponseBadRequest()
+            return HttpResponseForbidden()
 
     class Media:
         js = ("admin_edit_lock/update_lock.js",)

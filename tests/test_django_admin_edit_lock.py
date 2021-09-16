@@ -129,6 +129,7 @@ def test_update_lock_no_change_permission(client):
     client.login(username="editor", password="123")
     response = client.post(url + "update-lock/")
     assert response.status_code == 403
+    cache.clear()
 
 
 @pytest.mark.django_db
@@ -146,6 +147,7 @@ def test_update_lock_no_previous_lock(client):
     client.login(username="editor", password="123")
     response = client.post(url + "update-lock/")
     assert response.status_code == 403
+    cache.clear()
 
 
 @pytest.mark.django_db
@@ -169,3 +171,38 @@ def test_update_lock_does_not_own_lock(client):
     client.login(username="second_editor", password="123")
     response = client.post(url + "update-lock/")
     assert response.status_code == 403
+    cache.clear()
+
+
+@pytest.mark.django_db
+def test_update_lock_max_lock_duration(client, settings):
+    """
+    Lock should not be updated beyond the duration set by
+    ADMIN_EDIT_LOCK_DURATION
+    """
+    settings.ADMIN_EDIT_LOCK_DURATION = 20
+    settings.ADMIN_EDIT_LOCK_MAX_DURATION = 30
+
+    book_obj = Book.objects.create(name="A Brief History of Time")
+    editor = get_user_model().objects.create_user(
+        username="editor", password="123", is_staff=True
+    )
+    p = Permission.objects.get(codename="change_book")
+    editor.user_permissions.add(p)
+    url = reverse("admin:tests_book_change", args=(book_obj.id,))
+    client.login(username="editor", password="123")
+    with freeze_time("2015-10-21 04:29") as frozen_datetime:
+        # Get the initial lock
+        response = client.get(url)
+        assert response.status_code == 200
+        # Update the lock
+        frozen_datetime.tick(datetime.timedelta(seconds=19))
+        response = client.post(url + "update-lock/")
+        assert response.status_code == 204
+        # Check that lock was updated only for 11 seconds
+        ttl = cache._expire_info.get(":1:admin-edit-lock-tests-Book-1")
+        expiry_seconds = (
+            datetime.datetime.fromtimestamp(ttl) - frozen_datetime()
+        ).seconds
+        assert expiry_seconds == 11
+    cache.clear()
