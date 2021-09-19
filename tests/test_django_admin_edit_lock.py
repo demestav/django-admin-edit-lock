@@ -13,6 +13,10 @@ from freezegun import freeze_time
 from tests.models import Book, BookAdmin
 
 
+def dummy_get_response(request):
+    return None
+
+
 def test_cahce():
     with freeze_time("2015-10-21 04:29") as frozen_datetime:
         cache.set("testkey", "testvalue", 10)
@@ -39,7 +43,7 @@ def test_has_change_permission(rf, admin_user):
 
     request = rf.get("")
     request.user = editor
-    middleware = SessionMiddleware()
+    middleware = SessionMiddleware(dummy_get_response)
     middleware.process_request(request)
     request._messages = default_storage(request)
     request.session.save()
@@ -63,7 +67,7 @@ def test_decline_edit(rf):
     # First editor has edit rights
     request = rf.get("")
     request.user = editor
-    middleware = SessionMiddleware()
+    middleware = SessionMiddleware(dummy_get_response)
     middleware.process_request(request)
     request.session.save()
     request._messages = default_storage(request)
@@ -92,7 +96,7 @@ def test_lock_expiry(rf):
     with freeze_time("2015-10-21 04:29") as frozen_datetime:
         request = rf.get("")
         request.user = editor
-        middleware = SessionMiddleware()
+        middleware = SessionMiddleware(dummy_get_response)
         middleware.process_request(request)
         request.session.save()
         request._messages = default_storage(request)
