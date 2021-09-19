@@ -10,6 +10,7 @@ from django.core.cache import cache
 from django.urls import reverse
 from freezegun import freeze_time
 
+from admin_edit_lock.admin import AdminEditLockMixin
 from tests.models import Book, BookAdmin
 
 
@@ -210,3 +211,14 @@ def test_update_lock_max_lock_duration(client, settings):
         ).seconds
         assert expiry_seconds == 11
     cache.clear()
+
+
+@pytest.mark.django_db
+def test_get_user_from_session(client):
+    editor = get_user_model().objects.create_user(
+        username="editor", password="123", is_staff=True
+    )
+    client.login(username="editor", password="123")
+    assert (
+        AdminEditLockMixin.get_user_from_session(client.session.session_key) == editor
+    )

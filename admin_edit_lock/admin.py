@@ -3,12 +3,10 @@ import datetime
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import unquote
+from django.contrib.auth import get_user_model
+from django.contrib.sessions.models import Session
 from django.core.cache import cache
-from django.http.response import (
-    HttpResponse,
-    HttpResponseBadRequest,
-    HttpResponseForbidden,
-)
+from django.http.response import HttpResponse, HttpResponseForbidden
 from django.urls import path
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -66,10 +64,14 @@ class AdminEditLockMixin:
                     ),
                 )
             elif lock_permission is False:
+                if settings.ADMIN_EDIT_LOCK_DISPLAY_OWNER:
+                    lock_owner = self.get_user_from_session(lock_session_key).username
+                else:
+                    lock_owner = "someone else"
                 self.notify_user(
                     request,
                     _(
-                        "This is currently being edited by someone else."
+                        f"This is currently being edited by {lock_owner}."
                         " Editing disabled."
                     ),
                 )
@@ -114,6 +116,13 @@ class AdminEditLockMixin:
                 return HttpResponseForbidden()
         else:
             return HttpResponseForbidden()
+
+    @classmethod
+    def get_user_from_session(self, session_key):
+        session = Session.objects.get(session_key=session_key)
+        session_data = session.get_decoded()
+        user_obj = get_user_model().objects.get(id=session_data.get("_auth_user_id"))
+        return user_obj
 
     class Media:
         js = ("admin_edit_lock/update_lock.js",)
