@@ -37,6 +37,12 @@ Defines for how long a user can keep the same lock. The value is in seconds.
 
 This prevents a user to keep the maintain the edit rights of an object indefinitely. This is useful in cases where a user unintentionally keeps the edit screen open and therefore not allowing other users to edit the object.
 
+### `ADMIN_EDIT_LOCK_DISPLAY_OWNER`
+Defines whether to display the username of the user with edit rights, to other users trying to edit the same object. The value is
+`True` or `False`.
+
+:warning: If this is set to True, it raises potential privacy issues.
+
 ## Usage
 Use the `AdminEditLockMixin` to enable edit lock on a model. 
 
