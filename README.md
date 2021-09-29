@@ -67,7 +67,8 @@ class BookAdmin(AdminEditLockMixin, admin.ModelAdmin):
         model = Book
 ```
 
-## Roadmap
+## Roadmap 
+- Notify user of remaining edit (lock) time
 - Customize messages
 - ~~Extending the lock expiry time through AJAX call~~
 - ~~Optionally set a limit to how much the lock can be extended~~
